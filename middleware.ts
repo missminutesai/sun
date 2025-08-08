@@ -1,29 +1,29 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+declare module 'next/server' {
+  interface NextRequest {
+    ip?: string
+  }
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  const forwarded = request.headers.get('x-forwarded-for');
+  (request as any).ip = forwarded ? forwarded.split(',')[0] : request.socket?.remoteAddress;
 
-  // Log the request for debugging
   console.log(`Incoming request: ${pathname}${search}`);
 
-  // If the path ends with `.php`, redirect to `/api/secureproxy`
   if (pathname.endsWith('.php')) {
     const url = request.nextUrl.clone();
-
-    // Set the new path to `/api/secureproxy`
     url.pathname = '/api/secureproxy';
-    url.search = search; // Preserve query parameters
-
-    // Return a rewrite (internal redirect)
+    url.search = search;
     return NextResponse.rewrite(url);
   }
 
-  // Let all other requests pass through
   return NextResponse.next();
 }
 
-// Specify matcher to apply middleware only to .php requests
 export const config = {
   matcher: ['/secureproxy.php'],
 };
